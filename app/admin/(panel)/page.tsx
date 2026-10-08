@@ -1,7 +1,7 @@
 import Link from "next/link"
+import { PocketStatus } from "@prisma/client"
 
 import { prisma } from "@/lib/db/prisma"
-import { capacityFor } from "@/lib/domain"
 import { PageHeader } from "@/components/shell"
 
 export default async function AdminDashboardPage() {
@@ -9,16 +9,7 @@ export default async function AdminDashboardPage() {
     prisma.person.findMany({ select: { gender: true, status: true } }),
     prisma.pocket.findMany({
       where: { deletedAt: null },
-      select: {
-        gender: true,
-        status: true,
-        type: true,
-        _count: {
-          select: {
-            memberships: { where: { status: { in: ["PENDING", "APPROVED"] } } },
-          },
-        },
-      },
+      select: { gender: true, status: true },
     }),
     prisma.invitation.count({ where: { status: "PENDING" } }),
   ])
@@ -53,15 +44,7 @@ export default async function AdminDashboardPage() {
           <Stat href="/admin/pockets?filter=female" label="Female pockets" value={countPockets((pocket) => pocket.gender === "FEMALE")} />
           <Stat href="/admin/pockets?filter=available" label="Available" value={countPockets((pocket) => pocket.status === "AVAILABLE")} />
           <Stat href="/admin/pockets?filter=pending" label="Pending" value={countPockets((pocket) => pocket.status === "PENDING")} />
-          <Stat href="/admin/pockets?filter=confirmed" label="Confirmed" value={countPockets((pocket) => pocket.status === "CONFIRMED")} />
-          <Stat href="/admin/pockets?filter=locked" label="Locked" value={countPockets((pocket) => pocket.status === "LOCKED")} />
-          <Stat
-            href="/admin/pockets?filter=full"
-            label="Full"
-            value={countPockets(
-              (pocket) => pocket._count.memberships === capacityFor(pocket.type) && pocket.status !== "AVAILABLE"
-            )}
-          />
+          <Stat href="/admin/pockets?filter=booked" label="Booked" value={countPockets((pocket) => pocket.status === PocketStatus.BOOKED)} />
         </div>
       </section>
       <section>
