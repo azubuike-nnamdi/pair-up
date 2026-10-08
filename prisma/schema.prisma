@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum PersonStatus {
+  AVAILABLE
+  PENDING
+  ALLOCATED
+}
+
+enum PocketType {
+  TYPE_1
+  TYPE_2
+  TYPE_3
+}
+
+enum PocketStatus {
+  AVAILABLE
+  PENDING
+  CONFIRMED
+  FULL
+  LOCKED
+}
+
+enum MembershipRole {
+  INITIATOR
+  PARTNER
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  RELEASED
+}
+
+enum InvitationStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  EXPIRED
+}
+
+enum AuditAction {
+  PERSON_CREATED
+  PERSON_IMPORTED
+  PERSON_DELETED
+  POCKET_CREATED
+  BULK_POCKETS_CREATED
+  POCKET_DELETED
+  POCKET_LOCKED
+  ACCOMMODATION_REQUESTED
+  PARTNER_INVITATION_SENT
+  PARTNER_APPROVED
+  PARTNER_DECLINED
+  POCKET_CONFIRMED
+  POCKET_RELEASED
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Person {
+  id          String       @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String       @unique
+  phoneNumber String
+  gender      Gender
+  status      PersonStatus @default(AVAILABLE)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  memberships         Membership[]
+  sentInvitations     Invitation[] @relation("InvitationRequester")
+  receivedInvitations Invitation[] @relation("InvitationInvitee")
+  magicLinks          MagicLink[]
+
+  @@index([gender, status])
+}
+
+model Pocket {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  type      PocketType
+  gender    Gender
+  status    PocketStatus @default(AVAILABLE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  memberships Membership[]
+  invitations Invitation[]
+
+  @@index([gender, status, deletedAt])
+}
+
+model Membership {
+  id              String           @id @default(cuid())
+  personId        String
+  pocketId        String
+  role            MembershipRole
+  status          MembershipStatus
+  activePersonKey String?          @unique
+  joinedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  person Person @relation(fields: [personId], references: [id])
+  pocket Pocket @relation(fields: [pocketId], references: [id])
+
+  @@index([pocketId, status])
+  @@index([personId, status])
+}
+
+model Invitation {
+  id          String           @id @default(cuid())
+  pocketId    String
+  requesterId String
+  inviteeId   String
+  status      InvitationStatus @default(PENDING)
+  tokenHash   String           @unique
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  approvedAt  DateTime?
+  declinedAt  DateTime?
+
+  pocket    Pocket @relation(fields: [pocketId], references: [id])
+  requester Person @relation("InvitationRequester", fields: [requesterId], references: [id])
+  invitee   Person @relation("InvitationInvitee", fields: [inviteeId], references: [id])
+
+  @@index([inviteeId, status])
+  @@index([pocketId, status])
+}
+
+model MagicLink {
+  id        String    @id @default(cuid())
+  personId  String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId, createdAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  ip        String
+  createdAt DateTime @default(now())
+
+  @@index([ip, createdAt])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  action     AuditAction
+  actorType  String
+  actorId    String?
+  entityType String
+  entityId   String?
+  summary    String
+  createdAt  DateTime    @default(now())
+
+  @@index([createdAt])
+}
