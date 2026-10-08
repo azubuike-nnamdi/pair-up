@@ -9,15 +9,22 @@ async function main() {
     throw new Error("SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are required.")
   }
 
+  const passwordHash = await bcrypt.hash(password, 12)
   const existing = await prisma.admin.findUnique({ where: { email } })
   if (existing) {
+    const samePassword = await bcrypt.compare(password, existing.passwordHash)
+    if (samePassword) return
+    await prisma.admin.update({
+      where: { id: existing.id },
+      data: { passwordHash, sessionVersion: { increment: 1 } },
+    })
     return
   }
 
   await prisma.admin.create({
     data: {
       email,
-      passwordHash: await bcrypt.hash(password, 12),
+      passwordHash,
     },
   })
 }
