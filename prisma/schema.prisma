@@ -28,9 +28,7 @@ enum PocketType {
 enum PocketStatus {
   AVAILABLE
   PENDING
-  CONFIRMED
-  FULL
-  LOCKED
+  BOOKED
 }
 
 enum MembershipRole {
