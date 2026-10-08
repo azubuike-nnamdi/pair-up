@@ -14,7 +14,7 @@ import {
   previewPeopleImport,
   type ImportRow,
 } from "@/lib/people"
-import { bookPocket, createBulkPockets, createSinglePocket, deletePocket } from "@/lib/pockets"
+import { assignPeople, createBulkPockets, createSinglePocket, deletePocket } from "@/lib/pockets"
 import { prisma } from "@/lib/db/prisma"
 import { sendWelcomeEmail } from "@/lib/mail/messages"
 
@@ -188,12 +188,34 @@ export async function removePocket(pocketId: string): Promise<ActionResult> {
   }
 }
 
-export async function bookAvailablePocket(pocketId: string): Promise<ActionResult> {
+export async function listUnpairedPeople(pocketId: string) {
+  try {
+    await requireAdmin()
+    const pocket = await prisma.pocket.findFirst({
+      where: { id: pocketId, deletedAt: null },
+      select: { gender: true },
+    })
+    if (!pocket) return { error: "Pocket not found.", people: [] }
+    const people = await prisma.person.findMany({
+      where: { gender: pocket.gender, status: "AVAILABLE" },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      select: { id: true, firstName: true, lastName: true, email: true },
+    })
+    return { people }
+  } catch (error) {
+    const result = fail(error)
+    return { error: result?.error ?? "Something went wrong. Please try again.", people: [] }
+  }
+}
+
+export async function assignPocketPeople(pocketId: string, personIds: string[]): Promise<ActionResult> {
   try {
     const admin = await requireAdmin()
-    await bookPocket(admin.id, pocketId)
+    await assignPeople(admin.id, pocketId, personIds)
     revalidatePath("/admin/pockets")
     revalidatePath(`/admin/pockets/${pocketId}`)
+    revalidatePath("/admin")
+    revalidatePath("/home")
     return {}
   } catch (error) {
     return fail(error)
