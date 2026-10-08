@@ -1,6 +1,18 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { redirect } from "next/navigation"
+
 import { LoginForm } from "@/components/auth/login-form"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { requirePerson } from "@/lib/auth/guards"
+import { getSession } from "@/lib/auth/session"
 import { safeNextPath } from "@/lib/domain"
+
+function signedInDestination(next: string | undefined) {
+  const path = safeNextPath(next)
+  if (path === "/login" || path.startsWith("/login/") || path.startsWith("/auth/end")) {
+    return "/home"
+  }
+  return path
+}
 
 export default async function LoginPage({
   searchParams,
@@ -8,6 +20,20 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; next?: string }>
 }) {
   const params = await searchParams
+  const session = await getSession()
+  if (session?.role === "person") {
+    let destination: string | undefined
+    let expired = false
+    try {
+      await requirePerson()
+      destination = signedInDestination(params.next)
+    } catch {
+      expired = true
+    }
+    if (expired) redirect("/auth/end")
+    if (destination) redirect(destination)
+  }
+
   const next = params.next ? safeNextPath(params.next) : undefined
 
   return (
