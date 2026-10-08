@@ -12,11 +12,6 @@ export const POCKET_CAPACITY: Record<PocketType, number> = {
 
 export const ACTIVE_MEMBERSHIP = ["PENDING", "APPROVED"] as const
 
-export const UNAUTHORIZED_TITLE =
-  "You are not authorized to access this application."
-export const UNAUTHORIZED_BODY =
-  "Your email address is not registered as an eligible graduate trainee. Please contact the administrator if you believe this is an error."
-
 export const DUPLICATE_EMAIL =
   "A graduate trainee with this email already exists."
 
