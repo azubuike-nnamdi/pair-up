@@ -163,11 +163,6 @@ export const personSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required").max(80),
   lastName: z.string().trim().min(1, "Last name is required").max(80),
   email: z.email("Enter a valid email address"),
-  phoneNumber: z
-    .string()
-    .trim()
-    .min(7, "Enter a valid phone number")
-    .max(20, "Enter a valid phone number"),
   gender: z.enum(["MALE", "FEMALE"], { message: "Gender is required" }),
 })
 
