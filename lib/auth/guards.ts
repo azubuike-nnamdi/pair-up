@@ -4,13 +4,20 @@ import { getSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
 import { AppError } from "@/lib/domain"
 
+export function readSessionVersion(row: object) {
+  if ("sessionVersion" in row && typeof row.sessionVersion === "number") {
+    return row.sessionVersion
+  }
+  return null
+}
+
 export async function requireAdmin() {
   const session = await getSession()
   if (session?.role !== "admin") {
     throw new AppError("Unauthorized")
   }
   const admin = await prisma.admin.findUnique({ where: { id: session.adminId } })
-  if (!admin) {
+  if (!admin || readSessionVersion(admin) !== session.sessionVersion) {
     throw new AppError("Unauthorized")
   }
   return admin
