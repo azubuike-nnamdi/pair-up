@@ -35,11 +35,13 @@ export function FilterLinks({
   base,
   current,
   query,
+  extra,
   options,
 }: {
   base: string
   current: string
   query?: string
+  extra?: Record<string, string>
   options: Array<[string, string]>
 }) {
   return (
@@ -48,6 +50,9 @@ export function FilterLinks({
         const params = new URLSearchParams()
         if (value !== "all") params.set("filter", value)
         if (query) params.set("q", query)
+        if (extra) {
+          for (const [key, item] of Object.entries(extra)) params.set(key, item)
+        }
         const href = params.size ? `${base}?${params}` : base
         const active = current === value
         return (
