@@ -5,13 +5,40 @@ import { PublicThemeToggle } from "@/components/theme-toggle"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { appUrl } from "@/lib/domain"
 import { cn } from "@/lib/utils"
 import "./globals.css"
 
+const description =
+  "Graduate trainee accommodation allocation. Choose a pocket and roommates. Access is limited to registered graduate trainees."
 
 export const metadata: Metadata = {
-  title: "Pair Up",
-  description: "Graduate trainee accommodation allocation",
+  metadataBase: new URL(appUrl()),
+  title: {
+    default: "Pair Up",
+    template: "%s | Pair Up",
+  },
+  description,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_NG",
+    url: "/",
+    siteName: "Pair Up",
+    title: "Pair Up | Graduate trainee accommodation",
+    description,
+  },
+  twitter: {
+    card: "summary",
+    title: "Pair Up",
+    description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 const playfairDisplayHeading = Playfair_Display({ subsets: ['latin'], variable: '--font-heading' });
