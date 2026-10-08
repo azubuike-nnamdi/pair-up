@@ -9,7 +9,7 @@ import {
   formatWhen,
   fullName,
   genderLabel,
-  occupancyLabel,
+  occupantNames,
   statusLabel,
   toCsv,
   typeLabel,
@@ -78,13 +78,16 @@ export async function GET(
       },
     })
     const csv = toCsv(
-      ["Pocket name", "Gender", "Type", "Capacity", "Current occupants", "Status", "Created date"],
+      ["Pocket name", "Gender", "Type", "Capacity", "Occupants", "Status", "Created date"],
       pockets.map((pocket) => [
         pocket.name,
         genderLabel(pocket.gender),
         typeLabel(pocket.type),
         capacityFor(pocket.type),
-        occupancyLabel(pocket.memberships.length, capacityFor(pocket.type)),
+        occupantNames(
+          pocket.memberships.map((membership) => membership.person),
+          "; "
+        ),
         statusLabel(pocket.status),
         formatWhen(pocket.createdAt),
       ])
