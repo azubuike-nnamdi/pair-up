@@ -80,7 +80,6 @@ model Person {
   firstName   String
   lastName    String
   email       String       @unique
-  phoneNumber String
   gender      Gender
   status      PersonStatus @default(AVAILABLE)
   createdAt   DateTime     @default(now())
