@@ -12,7 +12,7 @@ vi.mock("@/lib/mail/messages", () => ({
 }))
 
 const { selectPocket, eligiblePockets } = await import("@/lib/allocation")
-const { bookPocket } = await import("@/lib/pockets")
+const { assignPeople } = await import("@/lib/pockets")
 
 beforeEach(() => {
   resetStore()
@@ -115,14 +115,36 @@ describe("pocket booking", () => {
     await expect(eligiblePockets("MALE")).resolves.toEqual([])
   })
 
-  it("lets an admin book an available pocket and refuses a second booking", async () => {
-    addPocket({ id: "pocket-1", name: "Block A - M1", type: "TYPE_1" })
+  it("assigns an unpaired person of the same gender and books a full pocket", async () => {
+    addPocket({ id: "pocket-1", name: "Block A - M1", type: "TYPE_2" })
+    addPerson({ id: "ada", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
+    addPerson({
+      id: "grace",
+      firstName: "Grace",
+      lastName: "Hopper",
+      email: "grace@example.com",
+    })
+    addPerson({
+      id: "ada-f",
+      firstName: "Ada",
+      lastName: "King",
+      email: "king@example.com",
+      gender: "FEMALE",
+    })
 
-    await bookPocket("admin-1", "pocket-1")
+    await assignPeople("admin-1", "pocket-1", ["ada"])
+
+    expect(memory().pockets[0]?.status).toBe("PENDING")
+    expect(memory().people.find((person) => person.id === "ada")?.status).toBe("ALLOCATED")
+    await expect(assignPeople("admin-1", "pocket-1", ["ada-f"])).rejects.toThrow(
+      new AppError("One of the selected people is not eligible.")
+    )
+
+    await assignPeople("admin-1", "pocket-1", ["grace"])
 
     expect(memory().pockets[0]?.status).toBe("BOOKED")
-    await expect(bookPocket("admin-1", "pocket-1")).rejects.toThrow(
-      new AppError("Only an available pocket can be booked.")
+    await expect(assignPeople("admin-1", "pocket-1", ["ada"])).rejects.toThrow(
+      new AppError("This pocket is already full.")
     )
   })
 })
