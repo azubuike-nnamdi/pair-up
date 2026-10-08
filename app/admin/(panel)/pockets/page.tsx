@@ -24,9 +24,7 @@ const filters = [
   ["female", "Female"],
   ["available", "Available"],
   ["pending", "Pending"],
-  ["confirmed", "Confirmed"],
-  ["full", "Full"],
-  ["locked", "Locked"],
+  ["booked", "Booked"],
 ] as Array<[string, string]>
 
 type ListedPocket = Prisma.PocketGetPayload<{
@@ -43,7 +41,7 @@ export default async function PocketsPage({
   const params = await searchParams
   const filter = filters.some(([value]) => value === params.filter) ? params.filter ?? "all" : "all"
   const pockets: ListedPocket[] = await prisma.pocket.findMany({
-    where: pocketWhere(filter === "full" ? "all" : filter),
+    where: pocketWhere(filter),
     orderBy: { name: "asc" },
     include: {
       _count: {
@@ -51,14 +49,6 @@ export default async function PocketsPage({
       },
     },
   })
-  const visible =
-    filter === "full"
-      ? pockets.filter(
-          (pocket) =>
-            pocket._count.memberships === capacityFor(pocket.type) && pocket.status !== "AVAILABLE"
-        )
-      : pockets
-
   return (
     <div>
       <PageHeader
@@ -90,14 +80,14 @@ export default async function PocketsPage({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {visible.length === 0 ? (
+          {pockets.length === 0 ? (
             <TableRow>
               <TableCell colSpan={8} className="text-muted-foreground">
                 No pockets match this view.
               </TableCell>
             </TableRow>
           ) : (
-            visible.map((pocket: ListedPocket) => {
+            pockets.map((pocket: ListedPocket) => {
               const capacity = capacityFor(pocket.type)
               return (
                 <TableRow key={pocket.id}>
@@ -121,7 +111,7 @@ export default async function PocketsPage({
                       pocketId={pocket.id}
                       name={pocket.name}
                       occupied={pocket._count.memberships > 0}
-                      canLock={pocket.status === "AVAILABLE"}
+                      canBook={pocket.status === "AVAILABLE"}
                     />
                   </TableCell>
                 </TableRow>
