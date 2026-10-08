@@ -85,6 +85,26 @@ export async function requestMagicLink(
   redirect("/login/sent")
 }
 
+export async function confirmMagicLink(formData: FormData) {
+  const token = String(formData.get("token") ?? "")
+  const next = safeNextPath(formData.get("next"))
+  const tokenHash = hashToken(token)
+  const updated = await prisma.magicLink.updateMany({
+    where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } },
+    data: { usedAt: new Date() },
+  })
+  if (updated.count !== 1) redirect("/login?error=expired")
+
+  const link = await prisma.magicLink.findUnique({
+    where: { tokenHash },
+    select: { personId: true },
+  })
+  if (!link) redirect("/login?error=expired")
+
+  await setSession({ role: "person", personId: link.personId })
+  redirect(next)
+}
+
 export async function adminLogin(
   _prev: ActionResult,
   formData: FormData
