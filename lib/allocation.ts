@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { PocketStatus, Prisma } from "@prisma/client"
 
 import { writeAudit } from "@/lib/audit"
 import { prisma } from "@/lib/db/prisma"
@@ -53,6 +53,16 @@ export async function selectPocket(input: {
     if (!pocket || pocket.status !== "AVAILABLE") {
       throw new AppError("This pocket is no longer available.")
     }
+    const occupied = await tx.membership.count({
+      where: { pocketId: pocket.id, status: { in: ["PENDING", "APPROVED"] } },
+    })
+    if (occupied >= capacityFor(pocket.type)) {
+      await tx.pocket.update({
+        where: { id: pocket.id },
+        data: { status: PocketStatus.BOOKED },
+      })
+      throw new AppError("This pocket is no longer available.")
+    }
     if (pocket.gender !== person.gender) {
       throw new AppError("You can only select a pocket that matches your gender.")
     }
@@ -104,7 +114,7 @@ export async function selectPocket(input: {
       })
       await tx.pocket.update({
         where: { id: pocket.id },
-        data: { status: "CONFIRMED" },
+        data: { status: PocketStatus.BOOKED },
       })
       await writeAudit(tx, {
         action: "ACCOMMODATION_REQUESTED",
@@ -112,7 +122,7 @@ export async function selectPocket(input: {
         actorId: person.id,
         entityType: "pocket",
         entityId: pocket.id,
-        summary: `${fullName(person)} confirmed ${pocket.name}`,
+        summary: `${fullName(person)} booked ${pocket.name}`,
       })
       await writeAudit(tx, {
         action: "POCKET_CONFIRMED",
@@ -120,7 +130,7 @@ export async function selectPocket(input: {
         actorId: person.id,
         entityType: "pocket",
         entityId: pocket.id,
-        summary: `${pocket.name} confirmed`,
+        summary: `${pocket.name} booked`,
       })
       return { invites, pocket, person, required }
     }
@@ -323,11 +333,11 @@ export async function respondToInvitation(input: {
       })
       const capacity = capacityFor(invitation.pocket.type)
       if (members.length !== capacity) {
-        throw new AppError("This pocket cannot be confirmed yet.")
+        throw new AppError("This pocket cannot be booked yet.")
       }
       await tx.pocket.update({
         where: { id: invitation.pocketId },
-        data: { status: "CONFIRMED" },
+        data: { status: PocketStatus.BOOKED },
       })
       await tx.person.updateMany({
         where: { id: { in: members.map((member) => member.personId) } },
@@ -339,7 +349,7 @@ export async function respondToInvitation(input: {
         actorId: input.personId,
         entityType: "pocket",
         entityId: invitation.pocketId,
-        summary: `${invitation.pocket.name} confirmed`,
+        summary: `${invitation.pocket.name} booked`,
       })
     }
   })
@@ -374,10 +384,16 @@ export async function expireStaleSelections() {
 }
 
 export async function eligiblePockets(gender: "MALE" | "FEMALE") {
-  return prisma.pocket.findMany({
+  const pockets = await prisma.pocket.findMany({
     where: { gender, status: "AVAILABLE", deletedAt: null },
     orderBy: { name: "asc" },
+    include: {
+      _count: {
+        select: { memberships: { where: { status: { in: ["PENDING", "APPROVED"] } } } },
+      },
+    },
   })
+  return pockets.filter((pocket) => pocket._count.memberships < capacityFor(pocket.type))
 }
 
 export async function eligiblePartners(personId: string, gender: "MALE" | "FEMALE") {
