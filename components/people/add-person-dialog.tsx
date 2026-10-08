@@ -71,10 +71,6 @@ export function AddPersonDialog() {
               <Input id="email" name="email" type="email" required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="phoneNumber">Phone number</Label>
-              <Input id="phoneNumber" name="phoneNumber" required />
-            </div>
-            <div className="grid gap-2">
               <Label>Gender</Label>
               <Select value={gender} onValueChange={(value) => setGender(value ?? "")}>
                 <SelectTrigger className="w-full">
