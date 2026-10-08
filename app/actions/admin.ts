@@ -33,7 +33,6 @@ export async function addPerson(
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       email: String(formData.get("email") ?? "").trim().toLowerCase(),
-      phoneNumber: formData.get("phoneNumber"),
       gender: formData.get("gender"),
     })
     if (!parsed.success) return { error: zodError(parsed.error) }
