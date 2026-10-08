@@ -40,7 +40,7 @@ export default async function PocketDetailPage({
             pocketId={pocket.id}
             name={pocket.name}
             occupied={occupants.length > 0}
-            canLock={pocket.status === "AVAILABLE"}
+            canBook={pocket.status === "AVAILABLE"}
             returnToList
           />
         }
