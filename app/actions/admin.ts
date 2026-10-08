@@ -18,7 +18,7 @@ import { assignPeople, createBulkPockets, createSinglePocket, deletePocket } fro
 import { prisma } from "@/lib/db/prisma"
 import { sendWelcomeEmail } from "@/lib/mail/messages"
 
-function fail(error: unknown): ActionResult {
+function fail(error: unknown): { error: string } {
   if (error instanceof AppError) return { error: error.message }
   return { error: "Something went wrong. Please try again." }
 }
@@ -203,8 +203,7 @@ export async function listUnpairedPeople(pocketId: string) {
     })
     return { people }
   } catch (error) {
-    const result = fail(error)
-    return { error: result?.error ?? "Something went wrong. Please try again.", people: [] }
+    return { error: fail(error).error, people: [] }
   }
 }
 
