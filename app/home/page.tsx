@@ -87,6 +87,22 @@ export default async function HomePage() {
     )
   }
 
+  if (person.status !== "AVAILABLE") {
+    const booked = person.status === "ALLOCATED"
+    return (
+      <section className="grid gap-3">
+        <h1 className="font-heading text-2xl tracking-wider uppercase">
+          {booked ? "Accommodation booked" : "Pending approval"}
+        </h1>
+        <p>
+          {booked
+            ? "Your accommodation has already been booked."
+            : "Your accommodation selection is waiting for approval."}
+        </p>
+      </section>
+    )
+  }
+
   const pockets: AvailablePocket[] = await eligiblePockets(person.gender)
 
   return (
