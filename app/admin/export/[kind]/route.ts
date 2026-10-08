@@ -53,12 +53,11 @@ export async function GET(
       },
     })
     const csv = toCsv(
-      ["First name", "Last name", "Email", "Phone", "Gender", "Pocket", "Allocation status"],
+      ["First name", "Last name", "Email", "Gender", "Pocket", "Allocation status"],
       people.map((person) => [
         person.firstName,
         person.lastName,
         person.email,
-        person.phoneNumber,
         genderLabel(person.gender),
         person.memberships[0]?.pocket.name ?? "",
         statusLabel(person.status),
