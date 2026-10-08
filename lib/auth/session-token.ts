@@ -4,11 +4,11 @@ const encoder = new TextEncoder()
 export const SESSION_COOKIE = COOKIE
 
 export type Session =
-  | { role: "admin"; adminId: string; exp: number }
+  | { role: "admin"; adminId: string; sessionVersion: number; exp: number }
   | { role: "person"; personId: string; exp: number }
 
 export type SessionInput =
-  | { role: "admin"; adminId: string }
+  | { role: "admin"; adminId: string; sessionVersion: number }
   | { role: "person"; personId: string }
 
 function secret() {
@@ -63,6 +63,7 @@ export async function signSession(session: SessionInput, maxAgeSeconds: number) 
       ? {
           role: "admin",
           adminId: session.adminId,
+          sessionVersion: session.sessionVersion,
           exp: Date.now() + maxAgeSeconds * 1000,
         }
       : {
@@ -86,7 +87,11 @@ export async function verifySession(token: string | undefined | null) {
     if (!parsed || typeof parsed.exp !== "number" || parsed.exp < Date.now()) {
       return null
     }
-    if (parsed.role === "admin" && typeof parsed.adminId === "string") {
+    if (
+      parsed.role === "admin" &&
+      typeof parsed.adminId === "string" &&
+      typeof parsed.sessionVersion === "number"
+    ) {
       return parsed
     }
     if (parsed.role === "person" && typeof parsed.personId === "string") {
