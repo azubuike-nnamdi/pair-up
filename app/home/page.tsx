@@ -46,8 +46,8 @@ export default async function HomePage() {
       .map((item) => fullName(item.person))
     return (
       <section className="grid gap-3">
-        <h1 className="font-heading text-2xl tracking-wider uppercase">Accommodation confirmed</h1>
-        <p>Your accommodation has already been confirmed.</p>
+        <h1 className="font-heading text-2xl tracking-wider uppercase">Accommodation booked</h1>
+        <p>Your accommodation has already been booked.</p>
         <p>Pocket: {membership.pocket.name}</p>
         <p>Roommates: {roommates.length ? roommates.join(", ") : "None"}</p>
       </section>
