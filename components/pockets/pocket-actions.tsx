@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-import { lockAvailablePocket, removePocket } from "@/app/actions/admin"
+import { bookAvailablePocket, removePocket } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,13 +19,13 @@ export function PocketActions({
   pocketId,
   name,
   occupied,
-  canLock,
+  canBook,
   returnToList,
 }: {
   pocketId: string
   name: string
   occupied: boolean
-  canLock: boolean
+  canBook: boolean
   returnToList?: boolean
 }) {
   const router = useRouter()
@@ -33,15 +33,15 @@ export function PocketActions({
   const [error, setError] = useState<string>()
   const [pending, startTransition] = useTransition()
 
-  function run(action: "delete" | "lock") {
+  function run(action: "delete" | "book") {
     startTransition(async () => {
       const result =
-        action === "delete" ? await removePocket(pocketId) : await lockAvailablePocket(pocketId)
+        action === "delete" ? await removePocket(pocketId) : await bookAvailablePocket(pocketId)
       if (result?.error) {
         setError(result.error)
         return
       }
-      toast.success(action === "delete" ? "Pocket deleted." : "Pocket locked.")
+      toast.success(action === "delete" ? "Pocket deleted." : "Pocket booked.")
       setOpen(false)
       if (action === "delete" && returnToList) router.push("/admin/pockets")
       else router.refresh()
@@ -50,9 +50,9 @@ export function PocketActions({
 
   return (
     <div className="flex flex-wrap gap-2">
-      {canLock ? (
-        <Button variant="outline" size="sm" disabled={pending} onClick={() => run("lock")}>
-          Lock
+      {canBook ? (
+        <Button variant="outline" size="sm" disabled={pending} onClick={() => run("book")}>
+          Book
         </Button>
       ) : null}
       <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
