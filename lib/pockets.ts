@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { PocketStatus, Prisma } from "@prisma/client"
 
 import { writeAudit } from "@/lib/audit"
 import { prisma, type Db } from "@/lib/db/prisma"
@@ -168,7 +168,7 @@ export async function deletePocket(adminId: string, pocketId: string) {
   })
 }
 
-export async function lockPocket(adminId: string, pocketId: string) {
+export async function bookPocket(adminId: string, pocketId: string) {
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$queryRaw`SELECT id FROM "Pocket" WHERE id = ${pocketId} FOR UPDATE`
     const pocket = await tx.pocket.findFirst({
@@ -176,11 +176,11 @@ export async function lockPocket(adminId: string, pocketId: string) {
     })
     if (!pocket) throw new AppError("Pocket not found.")
     if (pocket.status !== "AVAILABLE") {
-      throw new AppError("Only an available pocket can be locked.")
+      throw new AppError("Only an available pocket can be booked.")
     }
     await tx.pocket.update({
       where: { id: pocketId },
-      data: { status: "LOCKED" },
+      data: { status: PocketStatus.BOOKED },
     })
     await writeAudit(tx, {
       action: "POCKET_LOCKED",
@@ -188,7 +188,7 @@ export async function lockPocket(adminId: string, pocketId: string) {
       actorId: adminId,
       entityType: "pocket",
       entityId: pocketId,
-      summary: `Locked ${pocket.name}`,
+      summary: `Booked ${pocket.name}`,
     })
   })
 }
@@ -199,7 +199,6 @@ export function pocketWhere(filter: string) {
   if (filter === "female") where.gender = "FEMALE"
   if (filter === "available") where.status = "AVAILABLE"
   if (filter === "pending") where.status = "PENDING"
-  if (filter === "confirmed") where.status = "CONFIRMED"
-  if (filter === "locked") where.status = "LOCKED"
+  if (filter === "booked") where.status = PocketStatus.BOOKED
   return where
 }
