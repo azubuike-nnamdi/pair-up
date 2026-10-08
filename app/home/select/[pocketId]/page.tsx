@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 
 import { PartnerPicker } from "@/components/allocation/partner-picker"
+import { Button } from "@/components/ui/button"
 import { requirePerson } from "@/lib/auth/guards"
 import { eligiblePartners } from "@/lib/allocation"
 import { prisma } from "@/lib/db/prisma"
@@ -14,7 +15,19 @@ export default async function SelectPocketPage({
 }) {
   const { pocketId } = await params
   const person = await requirePerson()
-  if (person.status !== "AVAILABLE") redirect("/home")
+  if (person.status !== "AVAILABLE") {
+    return (
+      <section className="grid gap-4">
+        <h1 className="font-heading text-2xl tracking-wider uppercase">Selection closed</h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          You already have an accommodation selection.
+        </p>
+        <Button className="w-fit" nativeButton={false} render={<Link href="/home" />}>
+          Go to your accommodation
+        </Button>
+      </section>
+    )
+  }
 
   const pocket = await prisma.pocket.findFirst({
     where: {
