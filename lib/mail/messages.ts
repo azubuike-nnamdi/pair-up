@@ -74,13 +74,13 @@ export async function sendMagicLinkEmail(input: {
 Sign in to Pair Up with this secure link:
 ${input.url}
 
-This link expires in 30 minutes and can only be used once.`
+This link expires in 30 minutes. Open it, then press Continue to finish signing in.`
   const html = layout(
     "Your sign-in link",
     `<p>Hello ${escapeHtml(input.firstName)},</p>
      <p>Use the secure link below to continue your accommodation selection.</p>
      <p><a href="${url}" style="display:inline-block;background:#1c1917;color:#fafaf9;text-decoration:none;padding:12px 18px;font-weight:700;">Continue</a></p>
-     <p style="color:#57534e;font-size:13px;">This link expires in 30 minutes and can only be used once.<br />${url}</p>`
+     <p style="color:#57534e;font-size:13px;">This link expires in 30 minutes. Open it, then press Continue to finish signing in.<br />${url}</p>`
   )
   await sendMail({
     to: input.to,
