@@ -4,6 +4,7 @@ import { writeAudit } from "@/lib/audit"
 import { prisma, type Db } from "@/lib/db/prisma"
 import {
   AppError,
+  capacityFor,
   distributionSchema,
   distributionTotal,
   nextSequences,
@@ -168,27 +169,69 @@ export async function deletePocket(adminId: string, pocketId: string) {
   })
 }
 
-export async function bookPocket(adminId: string, pocketId: string) {
+export async function assignPeople(adminId: string, pocketId: string, personIds: string[]) {
+  const uniqueIds = [...new Set(personIds)]
+  if (uniqueIds.length === 0) throw new AppError("Select at least one person.")
+
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$queryRaw`SELECT id FROM "Pocket" WHERE id = ${pocketId} FOR UPDATE`
     const pocket = await tx.pocket.findFirst({
       where: { id: pocketId, deletedAt: null },
     })
     if (!pocket) throw new AppError("Pocket not found.")
-    if (pocket.status !== "AVAILABLE") {
-      throw new AppError("Only an available pocket can be booked.")
-    }
-    await tx.pocket.update({
-      where: { id: pocketId },
-      data: { status: PocketStatus.BOOKED },
+
+    const occupied = await tx.membership.count({
+      where: { pocketId, status: { in: ["PENDING", "APPROVED"] } },
     })
+    const capacity = capacityFor(pocket.type)
+    const seats = capacity - occupied
+    if (seats <= 0) throw new AppError("This pocket is already full.")
+    if (uniqueIds.length > seats) {
+      throw new AppError(
+        seats === 1 ? "Select 1 person." : `Select up to ${seats} people.`
+      )
+    }
+
+    const people = []
+    for (const personId of uniqueIds) {
+      const person = await tx.person.findUnique({ where: { id: personId } })
+      if (!person || person.gender !== pocket.gender || person.status !== "AVAILABLE") {
+        throw new AppError("One of the selected people is not eligible.")
+      }
+      people.push(person)
+    }
+
+    const now = new Date()
+    for (const person of people) {
+      await tx.membership.create({
+        data: {
+          personId: person.id,
+          pocketId: pocket.id,
+          role: "PARTNER",
+          status: "APPROVED",
+          activePersonKey: person.id,
+          joinedAt: now,
+        },
+      })
+      await tx.person.update({
+        where: { id: person.id },
+        data: { status: "ALLOCATED" },
+      })
+    }
+
+    const filled = occupied + people.length >= capacity
+    await tx.pocket.update({
+      where: { id: pocket.id },
+      data: { status: filled ? PocketStatus.BOOKED : PocketStatus.PENDING },
+    })
+    const names = people.map((person) => `${person.firstName} ${person.lastName}`).join(", ")
     await writeAudit(tx, {
-      action: "POCKET_LOCKED",
+      action: filled ? "POCKET_CONFIRMED" : "ACCOMMODATION_REQUESTED",
       actorType: "admin",
       actorId: adminId,
       entityType: "pocket",
-      entityId: pocketId,
-      summary: `Booked ${pocket.name}`,
+      entityId: pocket.id,
+      summary: `Assigned ${names} to ${pocket.name}`,
     })
   })
 }
