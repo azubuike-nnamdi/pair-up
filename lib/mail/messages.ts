@@ -109,7 +109,7 @@ ${input.url}`
     "Approval request",
     `<p>Hello ${escapeHtml(input.inviteeName)},</p>
      <p><strong>${escapeHtml(input.requesterName)}</strong> selected you for <strong>${escapeHtml(input.pocketName)}</strong> (${escapeHtml(input.typeLabel)}).</p>
-     <p>The pocket is confirmed only after every selected person approves.</p>
+     <p>The pocket is booked only after every selected person approves.</p>
      <p><a href="${url}" style="display:inline-block;background:#1c1917;color:#fafaf9;text-decoration:none;padding:12px 18px;font-weight:700;">Review invitation</a></p>
      <p style="color:#57534e;font-size:13px;">${url}</p>`
   )
