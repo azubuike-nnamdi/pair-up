@@ -1,4 +1,4 @@
-import { PocketStatus, Prisma } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 
 import { writeAudit } from "@/lib/audit"
 import { prisma, type Db } from "@/lib/db/prisma"
@@ -13,6 +13,11 @@ import {
 } from "@/lib/domain"
 
 const PREFIX = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$/
+
+function pocketStatus(status: "AVAILABLE" | "PENDING" | "BOOKED") {
+  return status as unknown as NonNullable<Prisma.PocketUpdateInput["status"]> &
+    NonNullable<Prisma.PocketWhereInput["status"]>
+}
 
 export async function releaseOccupants(db: Db, pocketId: string) {
   const memberships: { personId: string }[] = await db.membership.findMany({
@@ -222,7 +227,7 @@ export async function assignPeople(adminId: string, pocketId: string, personIds:
     const filled = occupied + people.length >= capacity
     await tx.pocket.update({
       where: { id: pocket.id },
-      data: { status: filled ? PocketStatus.BOOKED : PocketStatus.PENDING },
+      data: { status: pocketStatus(filled ? "BOOKED" : "PENDING") },
     })
     const names = people.map((person) => `${person.firstName} ${person.lastName}`).join(", ")
     await writeAudit(tx, {
@@ -242,6 +247,6 @@ export function pocketWhere(filter: string) {
   if (filter === "female") where.gender = "FEMALE"
   if (filter === "available") where.status = "AVAILABLE"
   if (filter === "pending") where.status = "PENDING"
-  if (filter === "booked") where.status = PocketStatus.BOOKED
+  if (filter === "booked") where.status = pocketStatus("BOOKED")
   return where
 }
