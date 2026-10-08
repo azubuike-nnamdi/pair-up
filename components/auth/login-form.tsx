@@ -36,7 +36,7 @@ export function LoginForm({ next, expired }: { next?: string; expired?: boolean 
       </div>
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <Button type="submit" disabled={pending}>
-        {pending ? "Checking..." : "Continue"}
+        {pending ? "Sending..." : "Continue"}
       </Button>
     </form>
   )
