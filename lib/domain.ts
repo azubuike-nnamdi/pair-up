@@ -54,6 +54,13 @@ export function fullName(person: { firstName: string; lastName: string }) {
   return `${person.firstName} ${person.lastName}`
 }
 
+export function occupantNames(
+  people: Array<{ firstName: string; lastName: string }>,
+  separator = ", "
+) {
+  return people.map(fullName).join(separator)
+}
+
 export function occupancyLabel(occupied: number, capacity: number) {
   return `${occupied} / ${capacity}`
 }
