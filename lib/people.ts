@@ -85,11 +85,9 @@ export async function previewPeopleImport(csv: string): Promise<ImportPreview> {
     throw new AppError("The CSV file is empty.")
   }
   const headers = table[0].map((header) => header.trim())
-  const expected = ["firstName", "lastName", "email", "phoneNumber", "gender"]
+  const expected = ["firstName", "lastName", "email", "gender"]
   if (expected.some((header, index) => headers[index] !== header)) {
-    throw new AppError(
-      "CSV headers must be firstName,lastName,email,phoneNumber,gender."
-    )
+    throw new AppError("CSV headers must be firstName,lastName,email,gender.")
   }
 
   const existing = new Set(
@@ -104,12 +102,11 @@ export async function previewPeopleImport(csv: string): Promise<ImportPreview> {
 
   table.slice(1).forEach((cells, index) => {
     const rowNumber = index + 2
-    const gender = parseGender(cells[4] ?? "")
+    const gender = parseGender(cells[3] ?? "")
     const parsed = personSchema.safeParse({
       firstName: cells[0] ?? "",
       lastName: cells[1] ?? "",
       email: (cells[2] ?? "").toLowerCase(),
-      phoneNumber: cells[3] ?? "",
       gender: gender ?? "",
     })
     if (!parsed.success) {
@@ -185,7 +182,6 @@ export function peopleWhere(filter: string, query: string) {
         { firstName: { contains: word, mode: "insensitive" } },
         { lastName: { contains: word, mode: "insensitive" } },
         { email: { contains: word, mode: "insensitive" } },
-        { phoneNumber: { contains: word, mode: "insensitive" } },
       ],
     }))
   }
