@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
+import { redirect, RedirectType } from "next/navigation"
 
 import type { ActionResult } from "@/app/actions/auth"
 import { requireAdmin, requirePerson } from "@/lib/auth/guards"
@@ -217,7 +217,7 @@ export async function choosePocket(
   }
   revalidatePath("/home")
   revalidatePath("/admin/pockets")
-  redirect("/home")
+  redirect("/home", RedirectType.replace)
 }
 
 export async function decideInvitation(input: {
@@ -233,5 +233,5 @@ export async function decideInvitation(input: {
   }
   revalidatePath("/home")
   revalidatePath("/admin")
-  redirect("/home")
+  redirect("/home", RedirectType.replace)
 }
