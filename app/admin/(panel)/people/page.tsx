@@ -73,7 +73,7 @@ export default async function PeoplePage({
         }
       />
       <form action="/admin/people" className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
-        <Input className="sm:min-w-0 sm:flex-1" name="q" defaultValue={query} placeholder="Search name, email, or phone" />
+        <Input className="sm:min-w-0 sm:flex-1" name="q" defaultValue={query} placeholder="Search name or email" />
         {filter !== "all" ? <input type="hidden" name="filter" value={filter} /> : null}
         <Button className="w-full sm:w-auto" type="submit" variant="outline">Search</Button>
       </form>
@@ -86,7 +86,6 @@ export default async function PeoplePage({
             <TableHead>First name</TableHead>
             <TableHead>Last name</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Phone</TableHead>
             <TableHead>Gender</TableHead>
             <TableHead>Pocket</TableHead>
             <TableHead>Status</TableHead>
@@ -96,7 +95,7 @@ export default async function PeoplePage({
         <TableBody>
           {people.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-muted-foreground">
+              <TableCell colSpan={7} className="text-muted-foreground">
                 No graduate trainees match this view.
               </TableCell>
             </TableRow>
@@ -106,7 +105,6 @@ export default async function PeoplePage({
                 <TableCell>{person.firstName}</TableCell>
                 <TableCell>{person.lastName}</TableCell>
                 <TableCell>{person.email}</TableCell>
-                <TableCell>{person.phoneNumber}</TableCell>
                 <TableCell>
                   <StatusBadge value={person.gender} />
                 </TableCell>
