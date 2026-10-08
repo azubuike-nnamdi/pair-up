@@ -42,6 +42,7 @@ export function genderCode(gender: Gender) {
 }
 
 export function statusLabel(status: string) {
+  if (status === "POCKET_CONFIRMED" || status === "POCKET_LOCKED") return "Pocket Booked"
   return status
     .toLowerCase()
     .split("_")
