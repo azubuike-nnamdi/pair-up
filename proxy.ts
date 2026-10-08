@@ -13,10 +13,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin/login", request.url))
   }
 
-  if (isAdminLogin && session?.role === "admin") {
-    return NextResponse.redirect(new URL("/admin", request.url))
-  }
-
   if (isHome && session?.role === "admin") {
     return NextResponse.redirect(new URL("/admin", request.url))
   }
@@ -25,13 +21,6 @@ export async function proxy(request: NextRequest) {
     const url = new URL("/login", request.url)
     url.searchParams.set("next", pathname)
     return NextResponse.redirect(url)
-  }
-
-  if (
-    (pathname === "/login" || pathname === "/login/sent") &&
-    session?.role === "person"
-  ) {
-    return NextResponse.redirect(new URL("/home", request.url))
   }
 
   return NextResponse.next()
