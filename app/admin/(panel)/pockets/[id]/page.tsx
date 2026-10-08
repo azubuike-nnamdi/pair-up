@@ -40,7 +40,9 @@ export default async function PocketDetailPage({
             pocketId={pocket.id}
             name={pocket.name}
             occupied={occupants.length > 0}
-            canBook={pocket.status === "AVAILABLE"}
+            canAssign={openSeats > 0}
+            seats={openSeats}
+            gender={pocket.gender}
             returnToList
           />
         }
