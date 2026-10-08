@@ -66,7 +66,7 @@ export function ImportDialog() {
           <DialogHeader>
             <DialogTitle>Import graduate trainees</DialogTitle>
             <DialogDescription>
-              CSV columns: firstName, lastName, email, phoneNumber, gender. Each new person receives a welcome email.
+              CSV columns: firstName, lastName, email, gender. Each new person receives a welcome email.
             </DialogDescription>
           </DialogHeader>
           <input
