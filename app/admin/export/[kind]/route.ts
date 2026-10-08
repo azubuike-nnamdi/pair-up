@@ -1,7 +1,8 @@
 import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 
-import { getSession } from "@/lib/auth/session"
+import { requireAdmin } from "@/lib/auth/guards"
+import { clearSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
 import {
   capacityFor,
@@ -32,8 +33,10 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ kind: string }> }
 ) {
-  const session = await getSession()
-  if (session?.role !== "admin") {
+  try {
+    await requireAdmin()
+  } catch {
+    await clearSession()
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
