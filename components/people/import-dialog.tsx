@@ -66,9 +66,16 @@ export function ImportDialog() {
           <DialogHeader>
             <DialogTitle>Import graduate trainees</DialogTitle>
             <DialogDescription>
-              CSV columns: firstName, lastName, email, gender. Each new person receives a welcome email.
+              Use the headings firstName, lastName, email, and gender. Gender is Male or Female. Each new person receives a welcome email.
             </DialogDescription>
           </DialogHeader>
+          <a
+            href="/samples/people.csv"
+            download="people-sample.csv"
+            className="text-sm underline underline-offset-4"
+          >
+            Download sample CSV
+          </a>
           <input
             type="file"
             accept=".csv,text/csv"
