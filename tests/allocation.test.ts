@@ -12,7 +12,7 @@ vi.mock("@/lib/mail/messages", () => ({
 }))
 
 const { selectPocket, eligiblePockets } = await import("@/lib/allocation")
-const { assignPeople, updatePocketName } = await import("@/lib/pockets")
+const { assignPeople, unpocketPerson, updatePocketName } = await import("@/lib/pockets")
 
 beforeEach(() => {
   resetStore()
@@ -145,6 +145,67 @@ describe("pocket booking", () => {
     expect(memory().pockets[0]?.status).toBe("BOOKED")
     await expect(assignPeople("admin-1", "pocket-1", ["ada"])).rejects.toThrow(
       new AppError("This pocket is already full.")
+    )
+  })
+})
+
+describe("unpocket", () => {
+  it("releases everyone in a pending pocket and keeps the pocket", async () => {
+    addPerson({ id: "ada", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
+    addPerson({ id: "grace", firstName: "Grace", lastName: "Hopper", email: "grace@example.com" })
+    addPocket({ id: "pocket-2", name: "Block A - M2", type: "TYPE_2" })
+
+    await selectPocket({ personId: "ada", pocketId: "pocket-2", partnerIds: ["grace"] })
+    await unpocketPerson("admin-1", "ada")
+
+    expect(memory().pockets[0]).toMatchObject({ status: "AVAILABLE", deletedAt: null })
+    expect(memory().people.map((person) => person.status)).toEqual(["AVAILABLE", "AVAILABLE"])
+    expect(memory().memberships.every((membership) => membership.status === "RELEASED")).toBe(true)
+    expect(memory().invitations.every((invitation) => invitation.status === "EXPIRED")).toBe(true)
+    expect(memory().audits.at(-1)).toMatchObject({
+      action: "POCKET_RELEASED",
+      summary: "Released 2 occupants from Block A - M2",
+    })
+    await expect(eligiblePockets("MALE")).resolves.toHaveLength(1)
+  })
+
+  it("releases everyone in a booked pocket and keeps the pocket", async () => {
+    addPerson({ id: "ada", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
+    addPerson({ id: "grace", firstName: "Grace", lastName: "Hopper", email: "grace@example.com" })
+    addPocket({ id: "pocket-2", name: "Block A - M2", type: "TYPE_2", status: "BOOKED" })
+    for (const person of memory().people) person.status = "ALLOCATED"
+    memory().memberships.push(
+      {
+        id: "ada-seat",
+        personId: "ada",
+        pocketId: "pocket-2",
+        role: "INITIATOR",
+        status: "APPROVED",
+        activePersonKey: "ada",
+      },
+      {
+        id: "grace-seat",
+        personId: "grace",
+        pocketId: "pocket-2",
+        role: "PARTNER",
+        status: "APPROVED",
+        activePersonKey: "grace",
+      }
+    )
+
+    await unpocketPerson("admin-1", "grace")
+
+    expect(memory().pockets[0]).toMatchObject({ name: "Block A - M2", status: "AVAILABLE", deletedAt: null })
+    expect(memory().people.map((person) => person.status)).toEqual(["AVAILABLE", "AVAILABLE"])
+    expect(memory().memberships.every((membership) => membership.status === "RELEASED")).toBe(true)
+    await expect(eligiblePockets("MALE")).resolves.toHaveLength(1)
+  })
+
+  it("rejects a person who is not in a pocket", async () => {
+    addPerson({ id: "ada", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" })
+
+    await expect(unpocketPerson("admin-1", "ada")).rejects.toThrow(
+      new AppError("This graduate trainee is not in a pocket.")
     )
   })
 })
