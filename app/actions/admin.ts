@@ -16,7 +16,7 @@ import {
   previewPeopleImport,
   type ImportRow,
 } from "@/lib/people"
-import { assignPeople, createBulkPockets, createSinglePocket, deletePocket, updatePocketName } from "@/lib/pockets"
+import { assignPeople, createBulkPockets, createSinglePocket, deletePocket, unpocketPerson, updatePocketName } from "@/lib/pockets"
 
 function fail(error: unknown): { error: string } {
   if (error instanceof AppError) return { error: error.message }
@@ -50,6 +50,21 @@ export async function addPerson(
         error: "The graduate trainee was added, but the welcome email could not be sent.",
       }
     }
+    return {}
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function clearPersonPocket(personId: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin()
+    await unpocketPerson(admin.id, personId)
+    revalidatePath("/admin/people")
+    revalidatePath("/admin/pockets")
+    revalidatePath("/admin/approvals")
+    revalidatePath("/admin")
+    revalidatePath("/home")
     return {}
   } catch (error) {
     return fail(error)
