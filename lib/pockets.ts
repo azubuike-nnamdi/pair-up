@@ -175,6 +175,38 @@ export async function updatePocketName(adminId: string, pocketId: string, nextNa
   }
 }
 
+export async function unpocketPerson(adminId: string, personId: string) {
+  const membership = await prisma.membership.findFirst({
+    where: { personId, status: { in: ["PENDING", "APPROVED"] } },
+    include: { pocket: true },
+  })
+  if (!membership || membership.pocket.deletedAt) {
+    throw new AppError("This graduate trainee is not in a pocket.")
+  }
+  const pocketId = membership.pocketId
+  const pocketName = membership.pocket.name
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.$queryRaw`SELECT id FROM "Pocket" WHERE id = ${pocketId} FOR UPDATE`
+    const released = await releaseOccupants(tx, pocketId)
+    if (released.length === 0) {
+      throw new AppError("This graduate trainee is not in a pocket.")
+    }
+    await tx.pocket.update({
+      where: { id: pocketId },
+      data: { status: pocketStatus("AVAILABLE") },
+    })
+    await writeAudit(tx, {
+      action: "POCKET_RELEASED",
+      actorType: "admin",
+      actorId: adminId,
+      entityType: "pocket",
+      entityId: pocketId,
+      summary: `Released ${released.length} occupants from ${pocketName}`,
+    })
+  })
+}
+
 export async function deletePocket(adminId: string, pocketId: string) {
   const pocket = await prisma.pocket.findFirst({
     where: { id: pocketId, deletedAt: null },
