@@ -139,6 +139,42 @@ export async function createBulkPockets(
   return plans.length
 }
 
+export async function updatePocketName(adminId: string, pocketId: string, nextName: string) {
+  const name = nextName.trim()
+  if (name.length < 2 || name.length > 80) {
+    throw new AppError("Enter a pocket name.")
+  }
+  const pocket = await prisma.pocket.findFirst({
+    where: { id: pocketId, deletedAt: null },
+  })
+  if (!pocket) throw new AppError("Pocket not found.")
+  if (pocket.name === name) return pocket
+  const previousName = pocket.name
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.pocket.update({
+        where: { id: pocketId },
+        data: { name },
+      })
+      await writeAudit(tx, {
+        action: "POCKET_RENAMED",
+        actorType: "admin",
+        actorId: adminId,
+        entityType: "pocket",
+        entityId: pocketId,
+        summary: `Renamed ${previousName} to ${name}`,
+      })
+      return updated
+    })
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new AppError("A pocket with this name already exists.")
+    }
+    throw error
+  }
+}
+
 export async function deletePocket(adminId: string, pocketId: string) {
   const pocket = await prisma.pocket.findFirst({
     where: { id: pocketId, deletedAt: null },
