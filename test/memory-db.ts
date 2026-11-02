@@ -65,6 +65,10 @@ type MemoryClient = {
       select?: { email: true }
     }) => Promise<Person[] | Array<{ email: string }>>
     update: (args: { where: { id: string }; data: Partial<Person> }) => Promise<Person>
+    updateMany: (args: {
+      where: { id: { in: string[] } }
+      data: Partial<Person>
+    }) => Promise<{ count: number }>
     create: (args: {
       data: Omit<Person, "id" | "status"> & { status?: Person["status"] }
     }) => Promise<Person>
@@ -83,9 +87,25 @@ type MemoryClient = {
       where: { pocketId: string; status: { in: Membership["status"][] } }
     }) => Promise<number>
     create: (args: { data: Omit<Membership, "id"> }) => Promise<Membership>
+    findFirst: (args: {
+      where: { personId: string; status: { in: Membership["status"][] } }
+      include: { pocket: true }
+    }) => Promise<(Membership & { pocket: Pocket | null }) | null>
+    findMany: (args: {
+      where: { pocketId: string; status: { in: Membership["status"][] } }
+      select: { personId: true }
+    }) => Promise<Array<{ personId: string }>>
+    updateMany: (args: {
+      where: { pocketId: string; status: { in: Membership["status"][] } }
+      data: Partial<Membership>
+    }) => Promise<{ count: number }>
   }
   invitation: {
     create: (args: { data: Record<string, unknown> }) => Promise<Record<string, unknown>>
+    updateMany: (args: {
+      where: { pocketId: string; status: string }
+      data: { status: string }
+    }) => Promise<{ count: number }>
   }
   auditLog: {
     create: (args: { data: Record<string, unknown> }) => Promise<Record<string, unknown>>
@@ -130,6 +150,18 @@ export const prisma: MemoryClient = {
       if (!person) throw new Error("Person not found")
       Object.assign(person, data)
       return person
+    },
+    async updateMany({
+      where,
+      data,
+    }: {
+      where: { id: { in: string[] } }
+      data: Partial<Person>
+    }) {
+      const ids = new Set(where.id.in)
+      const matches = state.store.people.filter((person) => ids.has(person.id))
+      for (const person of matches) Object.assign(person, data)
+      return { count: matches.length }
     },
     async create({ data }: { data: Omit<Person, "id" | "status"> & { status?: Person["status"] } }) {
       const person: Person = {
@@ -204,11 +236,64 @@ export const prisma: MemoryClient = {
       state.store.memberships.push(membership)
       return membership
     },
+    async findFirst({
+      where,
+    }: {
+      where: { personId: string; status: { in: Membership["status"][] } }
+      include: { pocket: true }
+    }) {
+      const membership = state.store.memberships.find(
+        (item) => item.personId === where.personId && matchesIn(item.status, where.status)
+      )
+      if (!membership) return null
+      const pocket = state.store.pockets.find((item) => item.id === membership.pocketId) ?? null
+      return { ...membership, pocket }
+    },
+    async findMany({
+      where,
+    }: {
+      where: { pocketId: string; status: { in: Membership["status"][] } }
+      select: { personId: true }
+    }) {
+      return state.store.memberships
+        .filter(
+          (membership) =>
+            membership.pocketId === where.pocketId && matchesIn(membership.status, where.status)
+        )
+        .map((membership) => ({ personId: membership.personId }))
+    },
+    async updateMany({
+      where,
+      data,
+    }: {
+      where: { pocketId: string; status: { in: Membership["status"][] } }
+      data: Partial<Membership>
+    }) {
+      const matches = state.store.memberships.filter(
+        (membership) =>
+          membership.pocketId === where.pocketId && matchesIn(membership.status, where.status)
+      )
+      for (const membership of matches) Object.assign(membership, data)
+      return { count: matches.length }
+    },
   },
   invitation: {
     async create({ data }: { data: Record<string, unknown> }) {
-      state.store.invitations.push(data)
+      state.store.invitations.push({ status: "PENDING", ...data })
       return data
+    },
+    async updateMany({
+      where,
+      data,
+    }: {
+      where: { pocketId: string; status: string }
+      data: { status: string }
+    }) {
+      const matches = state.store.invitations.filter(
+        (invitation) => invitation.pocketId === where.pocketId && invitation.status === where.status
+      )
+      for (const invitation of matches) Object.assign(invitation, data)
+      return { count: matches.length }
     },
   },
   auditLog: {
