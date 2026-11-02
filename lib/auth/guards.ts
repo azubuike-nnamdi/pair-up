@@ -2,7 +2,7 @@ import { headers } from "next/headers"
 
 import { getSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
-import { AppError } from "@/lib/domain"
+import { AppError, appUrl } from "@/lib/domain"
 
 export function readSessionVersion(row: object) {
   if ("sessionVersion" in row && typeof row.sessionVersion === "number") {
@@ -33,6 +33,17 @@ export async function requirePerson() {
     throw new AppError("Unauthorized")
   }
   return person
+}
+
+export async function requestOrigin() {
+  const configured = appUrl()
+  const local = configured.includes("localhost") || configured.includes("127.0.0.1")
+  if (!local) return configured
+  const headerList = await headers()
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host")
+  if (!host) return configured
+  const proto = headerList.get("x-forwarded-proto") ?? "http"
+  return `${proto}://${host}`
 }
 
 export async function requestIp() {
