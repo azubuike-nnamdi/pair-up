@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache"
 import { redirect, RedirectType } from "next/navigation"
 
 import type { ActionResult } from "@/app/actions/auth"
-import { requireAdmin, requirePerson } from "@/lib/auth/guards"
 import { respondToInvitation, selectPocket } from "@/lib/allocation"
+import { requestOrigin, requireAdmin, requirePerson } from "@/lib/auth/guards"
+import { prisma } from "@/lib/db/prisma"
 import { AppError, distributionTotal, nextSequences, personSchema, planPockets, zodError, type PocketDistribution } from "@/lib/domain"
+import { sendWelcomeEmail } from "@/lib/mail/messages"
 import {
   createPerson,
   deletePerson,
@@ -15,8 +17,6 @@ import {
   type ImportRow,
 } from "@/lib/people"
 import { assignPeople, createBulkPockets, createSinglePocket, deletePocket, updatePocketName } from "@/lib/pockets"
-import { prisma } from "@/lib/db/prisma"
-import { sendWelcomeEmail } from "@/lib/mail/messages"
 
 function fail(error: unknown): { error: string } {
   if (error instanceof AppError) return { error: error.message }
@@ -40,7 +40,11 @@ export async function addPerson(
     revalidatePath("/admin/people")
     revalidatePath("/admin")
     try {
-      await sendWelcomeEmail({ to: person.email, firstName: person.firstName })
+      await sendWelcomeEmail({
+        to: person.email,
+        firstName: person.firstName,
+        origin: await requestOrigin(),
+      })
     } catch {
       return {
         error: "The graduate trainee was added, but the welcome email could not be sent.",
@@ -78,9 +82,10 @@ export async function commitPeopleImport(rows: ImportRow[]): Promise<ActionResul
     const admin = await requireAdmin()
     const people = await importPeople(admin.id, rows)
     const unsent: string[] = []
+    const origin = await requestOrigin()
     for (const person of people) {
       try {
-        await sendWelcomeEmail({ to: person.email, firstName: person.firstName })
+        await sendWelcomeEmail({ to: person.email, firstName: person.firstName, origin })
       } catch {
         unsent.push(person.email)
       }
