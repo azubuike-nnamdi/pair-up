@@ -1,21 +1,22 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useMemo, useState, useTransition } from "react"
 import { toast } from "sonner"
 
-import { assignPocketPeople, listUnpairedPeople, removePocket } from "@/app/actions/admin"
+import { assignPocketPeople, listUnpairedPeople, removePocket, renamePocket } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 type Candidate = { id: string; firstName: string; lastName: string; email: string }
 
@@ -38,6 +39,8 @@ export function PocketActions({
 }) {
   const router = useRouter()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [draftName, setDraftName] = useState(name)
   const [assignOpen, setAssignOpen] = useState(false)
   const [people, setPeople] = useState<Candidate[]>([])
   const [selected, setSelected] = useState<string[]>([])
@@ -64,6 +67,25 @@ export function PocketActions({
     setPeople(result.people)
     setError(result.error)
     setLoading(false)
+  }
+
+  function openEdit() {
+    setError(undefined)
+    setDraftName(name)
+    setEditOpen(true)
+  }
+
+  function runRename() {
+    startTransition(async () => {
+      const result = await renamePocket(pocketId, draftName)
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+      toast.success("Pocket name updated.")
+      setEditOpen(false)
+      router.refresh()
+    })
   }
 
   function runDelete() {
@@ -100,6 +122,9 @@ export function PocketActions({
           Assign
         </Button>
       ) : null}
+      <Button variant="outline" size="sm" disabled={pending} onClick={openEdit}>
+        Edit
+      </Button>
       <Button
         variant="destructive"
         size="sm"
@@ -164,6 +189,37 @@ export function PocketActions({
             </Button>
             <Button disabled={pending || selected.length === 0} onClick={runAssign}>
               {pending ? "Assigning..." : "Assign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit pocket name</DialogTitle>
+            <DialogDescription>
+              This name is shown to trainees and in the pocket export.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor={`pocket-name-${pocketId}`}>Pocket name</Label>
+            <Input
+              id={`pocket-name-${pocketId}`}
+              value={draftName}
+              maxLength={80}
+              onChange={(event) => {
+                setDraftName(event.currentTarget.value)
+                setError(undefined)
+              }}
+            />
+          </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={pending || draftName.trim().length < 2} onClick={runRename}>
+              {pending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
