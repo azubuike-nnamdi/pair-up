@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 
 import { adminLogin, type ActionResult } from "@/app/actions/auth"
+import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,7 +20,7 @@ export function AdminLoginForm() {
       </div>
       <div className="grid gap-2">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required />
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? "Signing in..." : "Sign in"}

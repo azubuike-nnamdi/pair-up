@@ -1,4 +1,8 @@
+import { setDefaultResultOrder } from "node:dns"
+
 import { Prisma, PrismaClient } from "@prisma/client"
+
+setDefaultResultOrder("ipv4first")
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
@@ -23,10 +27,13 @@ function createPrismaClient() {
   })
 }
 
+if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
+  void globalForPrisma.prisma.$disconnect()
+  globalForPrisma.prisma = undefined
+}
+
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
-}
+globalForPrisma.prisma = prisma
 
 export type Db = PrismaClient | Prisma.TransactionClient

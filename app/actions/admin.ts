@@ -14,7 +14,7 @@ import {
   previewPeopleImport,
   type ImportRow,
 } from "@/lib/people"
-import { assignPeople, createBulkPockets, createSinglePocket, deletePocket } from "@/lib/pockets"
+import { assignPeople, createBulkPockets, createSinglePocket, deletePocket, updatePocketName } from "@/lib/pockets"
 import { prisma } from "@/lib/db/prisma"
 import { sendWelcomeEmail } from "@/lib/mail/messages"
 
@@ -170,6 +170,20 @@ export async function addBulkPockets(input: {
     revalidatePath("/admin/pockets")
     revalidatePath("/admin")
     return { title: String(count) }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function renamePocket(pocketId: string, name: string): Promise<ActionResult> {
+  try {
+    const admin = await requireAdmin()
+    await updatePocketName(admin.id, pocketId, name)
+    revalidatePath("/admin/pockets")
+    revalidatePath(`/admin/pockets/${pocketId}`)
+    revalidatePath("/admin")
+    revalidatePath("/home")
+    return {}
   } catch (error) {
     return fail(error)
   }

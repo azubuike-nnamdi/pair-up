@@ -1,24 +1,26 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import type { ReactNode } from "react"
 
 import { cn } from "cn"
 
 const PAGE_SIZES = [10, 25, 50]
 
-export function PocketPagination({
+export function TablePagination({
+  base,
   page,
   rows,
   total,
-  filter,
+  params = {},
 }: {
+  base: string
   page: number
   rows: number
   total: number
-  filter: string
+  params?: Record<string, string | undefined>
 }) {
   const router = useRouter()
   const pageCount = Math.max(1, Math.ceil(total / rows))
@@ -26,12 +28,14 @@ export function PocketPagination({
   const end = Math.min(page * rows, total)
 
   function href(nextPage: number, nextRows = rows) {
-    const params = new URLSearchParams()
-    if (filter !== "all") params.set("filter", filter)
-    if (nextRows !== 10) params.set("rows", String(nextRows))
-    if (nextPage > 1) params.set("page", String(nextPage))
-    const query = params.toString()
-    return query ? `/admin/pockets?${query}` : "/admin/pockets"
+    const search = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value) search.set(key, value)
+    }
+    if (nextRows !== 10) search.set("rows", String(nextRows))
+    if (nextPage > 1) search.set("page", String(nextPage))
+    const query = search.toString()
+    return query ? `${base}?${query}` : base
   }
 
   return (

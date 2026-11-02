@@ -12,7 +12,7 @@ vi.mock("@/lib/mail/messages", () => ({
 }))
 
 const { selectPocket, eligiblePockets } = await import("@/lib/allocation")
-const { assignPeople } = await import("@/lib/pockets")
+const { assignPeople, updatePocketName } = await import("@/lib/pockets")
 
 beforeEach(() => {
   resetStore()
@@ -145,6 +145,28 @@ describe("pocket booking", () => {
     expect(memory().pockets[0]?.status).toBe("BOOKED")
     await expect(assignPeople("admin-1", "pocket-1", ["ada"])).rejects.toThrow(
       new AppError("This pocket is already full.")
+    )
+  })
+})
+
+describe("pocket names", () => {
+  it("renames a pocket and records the previous name", async () => {
+    addPocket({ id: "pocket-1", name: "Block A - M1", type: "TYPE_2" })
+
+    await updatePocketName("admin-1", "pocket-1", "  Block A - M2  ")
+
+    expect(memory().pockets[0]?.name).toBe("Block A - M2")
+    expect(memory().audits[0]).toMatchObject({
+      action: "POCKET_RENAMED",
+      summary: "Renamed Block A - M1 to Block A - M2",
+    })
+  })
+
+  it("rejects a pocket name that is too short", async () => {
+    addPocket({ id: "pocket-1", name: "Block A - M1", type: "TYPE_2" })
+
+    await expect(updatePocketName("admin-1", "pocket-1", " A ")).rejects.toThrow(
+      new AppError("Enter a pocket name.")
     )
   })
 })
