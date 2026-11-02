@@ -36,8 +36,12 @@ function layout(title: string, body: string) {
 </html>`
 }
 
-export async function sendWelcomeEmail(input: { to: string; firstName: string }) {
-  const loginUrl = `${appUrl()}/login`
+export async function sendWelcomeEmail(input: {
+  to: string
+  firstName: string
+  origin?: string
+}) {
+  const loginUrl = `${input.origin ?? appUrl()}/login`
   const url = escapeHtml(loginUrl)
   const text = `Hello ${input.firstName},
 
