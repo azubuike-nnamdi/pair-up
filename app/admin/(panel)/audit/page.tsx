@@ -1,19 +1,29 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { PageHeader } from "@/components/shell"
+import { TablePagination } from "@/components/table-pagination"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 import { prisma } from "@/lib/db/prisma"
 import { formatWhen, statusLabel } from "@/lib/domain"
+import { tablePage } from "@/lib/table-page"
 
-export default async function AuditPage() {
+export default async function AuditPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; rows?: string }>
+}) {
+  const params = await searchParams
+  const total = await prisma.auditLog.count()
+  const { page, rows } = tablePage(total, params)
   const entries = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
-    take: 200,
+    skip: (page - 1) * rows,
+    take: rows,
   })
 
   return (
@@ -47,6 +57,7 @@ export default async function AuditPage() {
           )}
         </TableBody>
       </Table>
+      <TablePagination base="/admin/audit" page={page} rows={rows} total={total} />
     </div>
   )
 }
