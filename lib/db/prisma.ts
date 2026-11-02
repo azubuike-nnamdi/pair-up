@@ -20,11 +20,55 @@ function runtimeDatabaseUrl() {
   return parsed.toString()
 }
 
+const TRANSIENT_CODES = new Set(["P1001", "P1002", "P1008", "P1017", "P2024"])
+
+function isTransientDatabaseError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientInitializationError) return true
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    TRANSIENT_CODES.has(error.code)
+  ) {
+    return true
+  }
+  const message = error instanceof Error ? error.message : ""
+  return (
+    message.includes("Can't reach database") ||
+    message.includes("terminating connection") ||
+    message.includes("E57P01") ||
+    message.includes("Server has closed the connection") ||
+    message.includes("Connection reset")
+  )
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function createPrismaClient() {
-  return new PrismaClient({
+  const client = new PrismaClient({
     datasources: { db: { url: runtimeDatabaseUrl() } },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   })
+  return client.$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ args, query }) {
+          let last: unknown
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+              return await query(args)
+            } catch (error) {
+              last = error
+              if (!isTransientDatabaseError(error) || attempt === 2) throw error
+              await client.$disconnect()
+              await wait(300 * (attempt + 1))
+            }
+          }
+          throw last
+        },
+      },
+    },
+  }) as unknown as PrismaClient
 }
 
 if (process.env.NODE_ENV !== "production" && globalForPrisma.prisma) {
