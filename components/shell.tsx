@@ -1,8 +1,9 @@
 import Link from "next/link"
 
+import { logout } from "@/app/actions/auth"
+import { HowItWorks } from "@/components/allocation/how-it-works"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { logout } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
@@ -108,7 +109,8 @@ export function UserShell({
           <Link href="/home" className="font-heading text-lg tracking-wider uppercase">
             Pair Up
           </Link>
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <HowItWorks />
             <span className="max-w-40 truncate text-sm text-muted-foreground sm:max-w-none">{name}</span>
             <ThemeToggle />
             <form action={logout}>
