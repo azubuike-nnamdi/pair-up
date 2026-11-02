@@ -4,6 +4,7 @@ import Link from "next/link"
 import { AddPersonDialog } from "@/components/people/add-person-dialog"
 import { DeletePersonButton } from "@/components/people/delete-person-button"
 import { ImportDialog } from "@/components/people/import-dialog"
+import { UnpocketButton } from "@/components/people/unpocket-button"
 import { FilterLinks, PageHeader } from "@/components/shell"
 import { StatusBadge } from "@/components/status-badge"
 import { TablePagination } from "@/components/table-pagination"
@@ -130,6 +131,12 @@ export default async function PeoplePage({
                     <DeletePersonButton
                       personId={person.id}
                       name={`${person.firstName} ${person.lastName}`}
+                    />
+                  ) : person.memberships[0] ? (
+                    <UnpocketButton
+                      personId={person.id}
+                      name={`${person.firstName} ${person.lastName}`}
+                      pocketName={person.memberships[0].pocket.name}
                     />
                   ) : (
                     "—"
