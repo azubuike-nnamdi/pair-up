@@ -1,25 +1,24 @@
 import type { Prisma } from "@prisma/client"
 import Link from "next/link"
 
-import { buttonVariants } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { CreatePocketDialog } from "@/components/pockets/create-pocket-dialog"
 import { PocketActions } from "@/components/pockets/pocket-actions"
-import { PocketPagination } from "@/components/pockets/pocket-pagination"
 import { FilterLinks, PageHeader } from "@/components/shell"
 import { StatusBadge } from "@/components/status-badge"
+import { TablePagination } from "@/components/table-pagination"
+import { buttonVariants } from "@/components/ui/button"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 import { prisma } from "@/lib/db/prisma"
 import { capacityFor, formatWhen, occupantNames, typeLabel } from "@/lib/domain"
 import { pocketWhere } from "@/lib/pockets"
-
-const PAGE_SIZES = [10, 25, 50]
+import { tablePage } from "@/lib/table-page"
 
 const filters = [
   ["all", "All"],
@@ -43,12 +42,9 @@ export default async function PocketsPage({
 }) {
   const params = await searchParams
   const filter = filters.some(([value]) => value === params.filter) ? params.filter ?? "all" : "all"
-  const rows = PAGE_SIZES.includes(Number(params.rows)) ? Number(params.rows) : 10
   const where = pocketWhere(filter)
   const total = await prisma.pocket.count({ where })
-  const pageCount = Math.max(1, Math.ceil(total / rows))
-  const requested = Math.max(1, Number(params.page) || 1)
-  const page = Math.min(requested, pageCount)
+  const { page, rows } = tablePage(total, params)
   const pockets: ListedPocket[] = await prisma.pocket.findMany({
     where,
     orderBy: { name: "asc" },
@@ -142,7 +138,13 @@ export default async function PocketsPage({
           )}
         </TableBody>
       </Table>
-      <PocketPagination page={page} rows={rows} total={total} filter={filter} />
+      <TablePagination
+        base="/admin/pockets"
+        page={page}
+        rows={rows}
+        total={total}
+        params={{ filter: filter === "all" ? undefined : filter }}
+      />
     </div>
   )
 }
