@@ -4,16 +4,27 @@ import bcrypt from "bcryptjs"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 
-import { readSessionVersion, requestIp } from "@/lib/auth/guards"
+import { readSessionVersion, requestIp, requestOrigin } from "@/lib/auth/guards"
 import { clearSession, createToken, hashToken, setSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/prisma"
-import { AppError, appUrl, safeNextPath } from "@/lib/domain"
+import { AppError, safeNextPath } from "@/lib/domain"
 import { sendMagicLinkEmail } from "@/lib/mail/messages"
 
 export type ActionResult = { error?: string; title?: string } | null
 
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000
 const ADMIN_ATTEMPT_LIMIT = 5
+const UNAVAILABLE = "We could not reach the service. Please try again in a moment."
+
+function isFrameworkControl(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof error.digest === "string" &&
+    error.digest.startsWith("NEXT_")
+  )
+}
 
 async function pruneAttempts() {
   await prisma.loginAttempt.deleteMany({
@@ -37,49 +48,54 @@ export async function requestMagicLink(
     return { error: "Enter a valid email address." }
   }
 
-  const ip = await requestIp()
-  if ((await recentAttempts({ kind: "magic", ip })) >= 100) {
-    return { error: "Too many attempts. Please wait a few minutes and try again." }
-  }
-  await prisma.loginAttempt.create({ data: { ip, kind: "magic" } })
+  try {
+    const ip = await requestIp()
+    if ((await recentAttempts({ kind: "magic", ip })) >= 100) {
+      return { error: "Too many attempts. Please wait a few minutes and try again." }
+    }
+    await prisma.loginAttempt.create({ data: { ip, kind: "magic" } })
 
-  const person = await prisma.person.findUnique({ where: { email: parsed.data } })
-  if (person) {
-    const since = new Date(Date.now() - ATTEMPT_WINDOW_MS)
-    const recentLinks = await prisma.magicLink.count({
-      where: { personId: person.id, createdAt: { gt: since }, usedAt: null },
-    })
-    if (recentLinks < 5) {
-      await prisma.magicLink.updateMany({
-        where: { personId: person.id, usedAt: null },
-        data: { usedAt: new Date() },
+    const person = await prisma.person.findUnique({ where: { email: parsed.data } })
+    if (person) {
+      const since = new Date(Date.now() - ATTEMPT_WINDOW_MS)
+      const recentLinks = await prisma.magicLink.count({
+        where: { personId: person.id, createdAt: { gt: since }, usedAt: null },
       })
-
-      const token = createToken()
-      const link = await prisma.magicLink.create({
-        data: {
-          personId: person.id,
-          tokenHash: hashToken(token),
-          expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-        },
-      })
-
-      const url = new URL(`/auth/verify/${token}`, appUrl())
-      const next = safeNextPath(formData.get("next"))
-      if (next !== "/home") url.searchParams.set("next", next)
-
-      try {
-        await sendMagicLinkEmail({
-          to: person.email,
-          firstName: person.firstName,
-          url: url.toString(),
+      if (recentLinks < 5) {
+        await prisma.magicLink.updateMany({
+          where: { personId: person.id, usedAt: null },
+          data: { usedAt: new Date() },
         })
-      } catch (error) {
-        await prisma.magicLink.delete({ where: { id: link.id } })
-        if (error instanceof AppError) return { error: error.message }
-        return { error: "We could not send the sign-in email. Please try again." }
+
+        const token = createToken()
+        const link = await prisma.magicLink.create({
+          data: {
+            personId: person.id,
+            tokenHash: hashToken(token),
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+          },
+        })
+
+        const url = new URL(`/auth/verify/${token}`, await requestOrigin())
+        const next = safeNextPath(formData.get("next"))
+        if (next !== "/home") url.searchParams.set("next", next)
+
+        try {
+          await sendMagicLinkEmail({
+            to: person.email,
+            firstName: person.firstName,
+            url: url.toString(),
+          })
+        } catch (error) {
+          await prisma.magicLink.delete({ where: { id: link.id } })
+          if (error instanceof AppError) return { error: error.message }
+          return { error: "We could not send the sign-in email. Please try again." }
+        }
       }
     }
+  } catch (error) {
+    if (isFrameworkControl(error)) throw error
+    return { error: UNAVAILABLE }
   }
 
   redirect("/login/sent")
@@ -111,22 +127,27 @@ export async function adminLogin(
 ): Promise<ActionResult> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
-  const ip = await requestIp()
-  const limited =
-    (await recentAttempts({ kind: "admin", ip })) >= ADMIN_ATTEMPT_LIMIT ||
-    (email ? (await recentAttempts({ kind: "admin", email })) >= ADMIN_ATTEMPT_LIMIT : false)
-  if (limited) {
-    return { error: "Too many attempts. Please wait a few minutes and try again." }
-  }
+  try {
+    const ip = await requestIp()
+    const limited =
+      (await recentAttempts({ kind: "admin", ip })) >= ADMIN_ATTEMPT_LIMIT ||
+      (email ? (await recentAttempts({ kind: "admin", email })) >= ADMIN_ATTEMPT_LIMIT : false)
+    if (limited) {
+      return { error: "Too many attempts. Please wait a few minutes and try again." }
+    }
 
-  const admin = email ? await prisma.admin.findUnique({ where: { email } }) : null
-  const sessionVersion = admin ? readSessionVersion(admin) : null
-  const matches = admin ? await bcrypt.compare(password, admin.passwordHash) : false
-  if (!admin || sessionVersion === null || !matches) {
-    await prisma.loginAttempt.create({ data: { ip, email: email || null, kind: "admin" } })
-    return { error: "Invalid email or password." }
+    const admin = email ? await prisma.admin.findUnique({ where: { email } }) : null
+    const sessionVersion = admin ? readSessionVersion(admin) : null
+    const matches = admin ? await bcrypt.compare(password, admin.passwordHash) : false
+    if (!admin || sessionVersion === null || !matches) {
+      await prisma.loginAttempt.create({ data: { ip, email: email || null, kind: "admin" } })
+      return { error: "Invalid email or password." }
+    }
+    await setSession({ role: "admin", adminId: admin.id, sessionVersion })
+  } catch (error) {
+    if (isFrameworkControl(error)) throw error
+    return { error: UNAVAILABLE }
   }
-  await setSession({ role: "admin", adminId: admin.id, sessionVersion })
   redirect("/admin")
 }
 
